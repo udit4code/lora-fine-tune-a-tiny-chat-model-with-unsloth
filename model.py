@@ -238,8 +238,22 @@ def build_instruction_examples():
         }
     ]
 
-# Step 10 - format_instruction_example (not yet solved)
-# TODO: implement
+# Step 10 - format_instruction_example
+# Why do we need to transform the instruction-response example in a particular format ? 
+# Because, a causal language model doesn't inherently understand Python dictionaries. 
+# It operates on sequences of token IDs. 
+# So, our pipeline will look something like : 
+# python dictionary of "instruction" and "response" keys -> 
+# A flat string that wraps every (instruction, response) pair in the SAME template -> Tokenizer -> 
+# Token Ids for that example -> Causal Language Model -> Next Token Prediction Loss . 
+# During training, the model learns to predict the response tokens conditioned on the instruction and preceding tokens.
+
+def format_instruction_example(example):
+    """Return a single training string with role markers for instruction and response."""
+    return (
+        f"### Instruction:\n{example['instruction']}\n\n"
+        f"### Response:\n{example['response']}"
+    )
 
 # Step 11 - format_all_examples (not yet solved)
 # TODO: implement
