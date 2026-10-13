@@ -204,8 +204,9 @@ def count_trainable_parameters(model):
             count += parameter.numel()
     return count
 
-# Step 8 - trainable_fraction (not yet solved)
-# TODO: implement
+# Step 8 - trainable_fraction
+def trainable_fraction(trainable_count, total_count):
+    return trainable_count / total_count
 
 # Step 9 - build_instruction_examples (not yet solved)
 # TODO: implement
