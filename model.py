@@ -264,8 +264,25 @@ def format_all_examples(examples):
         texts.append(text)
     return texts
 
-# Step 12 - build_text_dataset (not yet solved)
-# TODO: implement
+# Step 12 - build_text_dataset
+from datasets import Dataset 
+
+# Under the hood, Hugging Face Datasets uses Apache Arrow, a columnar data format designed for efficient storage and processing.
+# Importantly, this function does not tokenize the strings. It simply stores them as a dataset column.
+# Say, our input is : 
+# texts = [
+#     "### Instruction:\nSay hello\n\n### Response:\nHello!",
+#     "### Instruction:\nWhat is 2+2?\n\n### Response:\n4"
+# ]
+# Then, after the Transformation, we have a dataset as : 
+# Row	text
+#   0	### Instruction:\nSay hello\n\n### Response:\nHello!
+#   1	### Instruction:\nWhat is 2+2?\n\n### Response:\n4
+
+def build_text_dataset(texts):
+    """Wrap a list of training strings in a HF Dataset with a 'text' column."""
+    # Dataset.from_dict() converts a Python dictionary/list of columns into a Hugging Face Dataset.
+    return Dataset.from_dict({"text": texts})
 
 # Step 13 - tokenize_text (not yet solved)
 # TODO: implement
