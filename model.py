@@ -192,8 +192,17 @@ def attach_lora_adapters(model, r=8, lora_alpha=16, target_modules=None):
 
     return model
 
-# Step 7 - count_trainable_parameters (not yet solved)
-# TODO: implement
+# Step 7 - count_trainable_parameters
+# When we attach LoRA adapters, the base model's weights are generally frozen by setting 
+# requires_grad = False, while LoRA matrices have requires_grad=True.
+
+def count_trainable_parameters(model):
+    """Return the number of trainable parameters in `model`."""
+    count = 0
+    for parameter in model.parameters():
+        if parameter.requires_grad == True:
+            count += parameter.numel()
+    return count
 
 # Step 8 - trainable_fraction (not yet solved)
 # TODO: implement
