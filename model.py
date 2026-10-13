@@ -46,8 +46,26 @@ def count_total_parameters(model):
         count += parameter.numel()
     return count
 
-# Step 3 - is_model_4bit_quantized (not yet solved)
-# TODO: implement
+# Step 3 - is_model_4bit_quantized
+from bitsandbytes.nn import Linear4bit 
+
+# NOTES : 
+# Q1 : What is bitsandbytes? 
+# Answer : bitsandbytes is a low-level quantization library for PyTorch.
+# Linear4bit is its memory-efficient replacement for torch.nn.Linear, designed to store neural-network weights using 4 bits instead of 16 or 32 bits.
+# We compress the weights to save GPU memory, but perform the actual matrix multiplication using an appropriate floating-point compute precision. 
+
+def is_model_4bit_quantized(model):
+    """Return True if any submodule of `model` is a bitsandbytes 4-bit linear layer."""
+    for name, module in model.named_modules():
+        if isinstance(module, Linear4bit):
+            # print(
+            #     f"Layer: {name}, "
+            #     f"Weight shape: {tuple(module.weight.shape)}, "
+            #     f"Weight type: {type(module.weight).__name__}"
+            # )
+            return True 
+    return False
 
 # Step 4 - ensure_pad_token (not yet solved)
 # TODO: implement
