@@ -50,10 +50,21 @@ def count_total_parameters(model):
 from bitsandbytes.nn import Linear4bit 
 
 # NOTES : 
-# Q1 : What is bitsandbytes? 
-# Answer : bitsandbytes is a low-level quantization library for PyTorch.
+# What is bitsandbytes? 
+# bitsandbytes is a low-level quantization library for PyTorch.
 # Linear4bit is its memory-efficient replacement for torch.nn.Linear, designed to store neural-network weights using 4 bits instead of 16 or 32 bits.
 # We compress the weights to save GPU memory, but perform the actual matrix multiplication using an appropriate floating-point compute precision. 
+
+# What happens inside Linear4bit ? 
+# We can think of 2 stages : 
+# 1. In the first stage, we load and quantize the weights. When we initialise a regular torch.nn.Linear object, PyTorch
+# creates a normal floating point parameter. On the other hand, Linear4bit wraps its weights inside a special Params4bit object, alongwith some additional 
+# metadata. For a fresh Linear4bit object constructed from floating-point weights, quantization normally occurs when moving the layer to its execution device. 
+# A previously quantized checkpoint can instead load packed weights and metadata directly. An important nuance : Since 2 4-bit weights can fit inside one 8-bit byte,
+# a Linear4bit weight tensor can have storage type dtype=torch.uint8 eventhough its logical weights are 4 bit. 
+# 2. In the second stage, we conduct the forward pass. Say, our input is in BF16, for X with [B x H] shape. Our weights W are stored in a compressed format. 
+# So, Q_w = Quantize4bit(W). Conceptually, the output is Y = X @ Dequantize(Q_w).T . The actual implementation uses specialized kernels to perform this 
+# efficiently, where it does not necessarily materialize the entire dequantized weight matrix in GPU memory. 
 
 def is_model_4bit_quantized(model):
     """Return True if any submodule of `model` is a bitsandbytes 4-bit linear layer."""
