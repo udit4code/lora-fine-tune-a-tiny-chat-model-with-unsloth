@@ -440,6 +440,38 @@ def switch_to_inference_mode(model):
     return model
 
 # Step 19 - build_chat_prompt
+# Under the hood, there are 2 important operations : 
+
+# Step 1 : Construct the conversation as shown below ->
+# messages = [
+#     {"role": "user", "content": "What is gradient descent?"}
+# ]
+# This represents a conversation containing one user message.
+
+# Step 2 : Apply the model-specific chat template via the method tokenizer.apply_chat_template(...)
+# which has 3 main parameters : messages (the conversation represented as a role/content dictionaries),
+# tokenize (which is set to False, so that we return a Python string instead of token ids), and add_generation_prompt=True 
+# so that we append the beginning of the  assistant turn and ensure that the model can continue generating.
+
+# Eg : prompt = build_chat_prompt(tokenizer,"What is gradient descent?")
+# leads to the chat prompt '<|im_start|>user\nWhat is gradient descent?<|im_end|>\n<|im_start|>assistant\n' . 
+# This looks like : 
+# <|im_start|>user
+# What is gradient descent?<|im_end|>
+# <|im_start|>assistant
+
+# We deliberately do not append the assistant's answer or the assistant's end-of-turn token. Why ? Because it is the model that
+# generates those text. 
+
+# Why do we use a chat template ? 
+# Because Qwen2.5-Instruct was trained to recognize its own conversation delimiters including <|im_start|> and <|im_end|>. 
+# For inference, using its native chat template is generally preferable.
+
+# CAVEAT : our earlier training examples used ### Instruction / ### Response formatting, while this function uses Qwen's native chat format. 
+# Ideally, training and inference formatting should match. For our toy smoke test, this is useful for checking generation, but for a rigorous fine-tuning experiment, 
+# it is recommended to use the same chat template when preparing the training dataset.
+
+
 def build_chat_prompt(tokenizer, instruction):
     """Return a chat-template prompt string ready for assistant generation."""
     messages = [
