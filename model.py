@@ -301,8 +301,13 @@ def tokenize_text(tokenizer, text):
 
     return encoded["input_ids"]
 
-# Step 14 - count_tokens (not yet solved)
-# TODO: implement
+# Step 14 - count_tokens
+# A tokenizer turns a string into a sequence of integer token ids with shape (T,). 
+# Counting tokens means asking how big T is. 
+# For a featherweight SFT run with max_seq_length=256, we want every formatted example to come in well under that budget.
+def count_tokens(input_ids):
+    """Return the number of tokens in a tokenized example."""
+    return len(input_ids)
 
 # Step 15 - build_training_arguments (not yet solved)
 # TODO: implement
