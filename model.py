@@ -309,8 +309,71 @@ def count_tokens(input_ids):
     """Return the number of tokens in a tokenized example."""
     return len(input_ids)
 
-# Step 15 - build_training_arguments (not yet solved)
-# TODO: implement
+# Step 15 - build_training_arguments
+import torch
+from transformers import TrainingArguments
+
+# CLARIFICATION : 
+# 1. MICRO-BATCH : Examples processed together in one forward/backward computation locally on a device
+# 2. Per-device train batch size : Hugging Face setting controlling the local micro-batch size
+# 3. Gradient accumulation steps : Number of micro-batch backward passes before an optimizer update
+# 4. Effective/global batch size : Total examples whose gradients contribute to one optimizer update
+
+def build_training_arguments(output_dir='./sft_out', max_steps=5, learning_rate=2e-4):
+    """Return featherweight TrainingArguments for the SFT run."""
+    use_bf16 = (
+        torch.cuda.is_available()
+        and torch.cuda.is_bf16_supported()
+    )
+
+    # The below is the requested configuration for a Training run.
+    # We can think of it as an object that pins down every knob of the optimizer and logger.
+    # TrainingArguments is a dataclass. With max_steps=5 and per_device_train_batch_size=1, 
+    # the trainer does exactly 5 forward/backward/update cycles on single-example batches. 
+
+    # Say, we have 1000 instruction-response examples. We are training Qwen2.5-0.5B with LoRA on 1 GPU.
+    # Now, we set per_device_train_batch_size = 4 and gradient_accumulation_steps = 1.
+    # What happens under the hood ? In 1 training step on 1 GPU (say rank-0 GPU), we have forward and backward
+    # pass over examples 0, 1, 2, 3 and after that, an optimizer update step on LoRA parameters. 
+    # The rank-0 GPU processes four examples in one forward/backward pass, computes gradients, and then updates the model.
+    # For conventional Hugging Face Trainer training, per-device train batch size is essentially the local micro-batch size.
+    # 
+    # Now, say, per_device_train_batch_size = 4 led to GPU running into Out-of-Memory Error (OOM).
+    # So, we have enough VRAM to process only 1 example at a time and hence, we decide to go to a 4-GPU world.
+    # Since we still want to update the model using gradients from four training examples, we apply the following trick : 
+    # we process one example at a time, accumulate gradients and update only after four examples. 
+    # So, we set per_device_train_batch_size = 1 and gradient_accumulation_steps = 4. 
+    # This leads to 4 micro-batches (each micro batch having 1 example) and 1 optimizer update. 
+    # So, Rank 0 GPU -> Example 0 -> Forward pass + backward pass -> accumulate gradient g_0 -> do not call optimizer.step() yet
+    # Rank 1 GPU -> Example 1 -> Forward pass + backward pass -> accumulate gradient g_1 -> do not call optimizer.step() yet
+    # Rank 3 GPU -> Example 2 -> Forward pass + backward pass -> accumulate gradient g_2 -> do not call optimizer.step() yet
+    # Rank 4 GPU -> Example 3 -> Forward pass + backward pass -> accumulate gradient g_3 -> do not call optimizer.step() yet
+    # Once we are done processing each local micro-batch across 4 GPUs in our world, we do 1 Optimizer step. 
+    # Notice what changed: instead of keeping activations from four examples in GPU memory simultaneously, we're processing one example at a time.
+    # Gradient accumulation trades additional sequential computation for lower peak activation memory. 
+
+    # Thus, the formula for effective batch size = per_device_train_batch_size x G x D, 
+    # where G = gradient_accumulation_steps, D = Number of data-parallel training devices or GPUs in the world = Size of the GPU-world
+    return TrainingArguments(
+        output_dir=output_dir,
+        # We want to process one training example per GPU per micro-batch.
+        per_device_train_batch_size=1,
+        # We update LoRA parameters after every micro-batch
+        gradient_accumulation_steps=1,
+        # max_steps is the limit after which we stop optimizer update steps.
+        # So, max_steps = 100 means 100 optimizer updates, not necessarily 100 forward/backward passes
+        max_steps=max_steps,
+        learning_rate=learning_rate,
+        # We use bf16 mixed precision when supported GPUs are available.
+        # Setting both bf16 and fp16 to True raises an error. 
+        bf16=use_bf16,
+        fp16=not use_bf16,
+        # We want to log training metrics for every optimizer step. 
+        logging_steps=1,
+        optim="adamw_8bit",
+        # We want to disable external experiment-tracking integrations
+        report_to="none",
+    )
 
 # Step 16 - build_sft_trainer (not yet solved)
 # TODO: implement
