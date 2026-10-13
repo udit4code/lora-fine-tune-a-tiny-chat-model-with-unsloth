@@ -414,8 +414,22 @@ def build_sft_trainer(model, tokenizer, dataset, training_args, max_seq_length=2
 
     return trainer
 
-# Step 17 - run_sft_training (not yet solved)
-# TODO: implement
+# Step 17 - run_sft_training
+def run_sft_training(trainer):
+    """Run a few SFT steps and return the final training loss as a float."""
+    # Under the hood, what happens when we do trainer.train() ? 
+    # For each training step, 
+    # 1. Fetch mini-batch from dataset.
+    # 2. Forward pass through Qwen + LoRA.
+    # 3. Compute causal language modeling loss.
+    # 4. Backpropagate gradients.
+    # 5. Update trainable LoRA weights using AdamW.
+    # 6. Log Metrics. 
+    train_result = trainer.train()
+    # The trainer's call to train() returns a result object whose training_loss field holds the average loss across the run, 
+    # while individual step losses are also captured in state.log_history.
+    final_loss = train_result.metrics["train_loss"]
+    return float(final_loss)
 
 # Step 18 - switch_to_inference_mode (not yet solved)
 # TODO: implement
