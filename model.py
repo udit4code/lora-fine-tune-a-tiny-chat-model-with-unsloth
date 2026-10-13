@@ -380,6 +380,11 @@ from dataclasses import fields
 from transformers import TrainingArguments
 from trl import SFTTrainer, SFTConfig
 
+# Under the hood, our SFT Training Pipeline has : 
+# 1. LoRA Model : 4-bit Qwen + Adapters
+# 2. HuggingFace Dataset, with column = "text"
+# 3. Tokenizer that converts text into token_ids
+# 4. SFTConfig
 def build_sft_trainer(model, tokenizer, dataset, training_args, max_seq_length=256):
     """Construct a trl SFTTrainer over dataset['text'] ready to .train()."""
     # Preserve existing TrainingArguments settings
@@ -392,8 +397,11 @@ def build_sft_trainer(model, tokenizer, dataset, training_args, max_seq_length=2
     # Add SFT-specific settings
     sft_args = SFTConfig(
         **base_args,
+        # dataset_text_field="text" means we read examples from dataset["text"]
         dataset_text_field="text",
+        # max_length=max_seq_length means we truncate tokenized examples beyond max_seq_length tokens
         max_length=max_seq_length,
+        # By packing=False, we do not combine separate dataset examples into one sequence.
         packing=False,
     )
 
