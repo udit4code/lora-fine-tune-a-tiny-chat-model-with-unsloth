@@ -79,6 +79,53 @@ def is_model_4bit_quantized(model):
     return False
 
 # Step 4 - ensure_pad_token
+# Why do we need to ensure that the padding token is not None ? 
+
+# To understand it, let us assume we have a training dataset of 2 sentences :
+# Sentence A = "I love machine learning" and Sentence B = "I love Python". 
+# After tokenization, we have : Sentence A = [11, 22, 33, 44] of length 4 and 
+# Sentence B = [11, 22, 55] of length 3. Because GPUs operate efficiently on batches
+# of rectangular tokens, we cannot directly stack a length-4 tensor and a length-3 tensor
+# into one 2D Tensor and hence, we have to pad the shorter sequence (which is sentence B).
+# Assuming our eos_token has id 99, after padding, we have : Sentence A = [11, 22, 33, 44]
+# and Sentence B = [11, 22, 55, 99], where both are of length 4. Now, we have 2 tensors of
+# length 4, and so we can stack them together into a batch. 
+# The eos_token is a special token in the vocabulary indicating that a generated sequence has ended. 
+# By using eos_token as the padding token, we did not add any new token to the vocabulary.
+# We simply instructed the tokenizer to reuse an existing token id for padding. This is useful
+# because the model already has an embedding for that token_id. 
+
+# Now, the next obvious question is : How will we ensure that the model won't mistake the padding token
+# as the actual eos_token, when we have guaranteed the the tokenizer's pad_token defaults to eos_token ? 
+# This is ensured by the attention-mask, as shown below. When we do : 
+
+# tokenizer = ensure_pad_token(tokenizer)
+# batch = tokenizer(
+#     ["I love machine learning", "I love Python"],
+#     padding=True,
+#     return_tensors="pt",
+# )
+# , under the hood, conceptually, batch has 2 components : input_ids and corresponding attention_mask as : 
+# input_ids:
+# [
+#   [11, 22, 33, 44],
+#   [11, 22, 55, 99]
+# ]
+# attention_mask:
+# [
+#   [1, 1, 1, 1],
+#   [1, 1, 1, 0]
+# ]
+# Here, 1 means an actual token that the model should attend to, and 0 means a padding position that 
+# should be masked. For SFT, there is another important minor detail : the loss mask. 
+# A common convention is to set padding positions in labels to -100, so PyTorch's cross-entropy loss ignores them.
+# labels = batch["input_ids"].clone()
+# labels[batch["attention_mask"] == 0] = -100
+# Why ? Because causal LMs predict the next token, and we should not train them to predict artificial padding.
+# WARNING : when pad_token_id == eos_token_id, don't indiscriminately mask every occurrence of that token ID in the labels. You could accidentally mask genuine EOS targets too. 
+# Use the attention mask or your training data collator's explicit label masking strategy.
+
+
 def ensure_pad_token(tokenizer):
     """Guarantee tokenizer.pad_token is not None; fall back to eos_token."""
     if tokenizer.pad_token is None:
