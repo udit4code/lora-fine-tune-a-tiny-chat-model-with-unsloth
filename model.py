@@ -208,8 +208,35 @@ def count_trainable_parameters(model):
 def trainable_fraction(trainable_count, total_count):
     return trainable_count / total_count
 
-# Step 9 - build_instruction_examples (not yet solved)
-# TODO: implement
+# Step 9 - build_instruction_examples
+# In Supervised Fine Tuning, each example contains : 
+# Instruction(x) : What we ask the model to do ?
+# Respose(y) : What we want the model to generate ?
+# So, our training dataset is D = {(x_1, y_1), ...., (x_N, y_N)}
+def build_instruction_examples():
+    """Return a small list of {'instruction', 'response'} dicts for SFT."""
+    return [
+        {
+            "instruction": "What is gradient descent?",
+            "response": "Gradient descent minimizes a loss function by repeatedly updating parameters in the direction opposite to the gradient."
+        },
+        {
+            "instruction": "Explain overfitting in one sentence.",
+            "response": "Overfitting occurs when a model learns training-specific patterns that do not generalize well to unseen data."
+        },
+        {
+            "instruction": "Translate 'Good morning' into French.",
+            "response": "Bonjour."
+        },
+        {
+            "instruction": "What is 12 multiplied by 8?",
+            "response": "96."
+        },
+        {
+            "instruction": "Write a Python function that squares a number.",
+            "response": "def square(x):\n    return x * x"
+        }
+    ]
 
 # Step 10 - format_instruction_example (not yet solved)
 # TODO: implement
