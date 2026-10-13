@@ -520,6 +520,9 @@ def generate_reply(model, tokenizer, prompt, max_new_tokens=32):
     # Step 1: Tokenize the prompt
     inputs = tokenizer(
         prompt,
+        # When we write "pt" for return_tensors, it means that we are telling 
+        # HuggingFace tokenizer to return PyTorch Tensors (torch.Tensor) instead of Python lists.
+        # When we return pyTorch Tensors, then, the shape of inputs has an extra dimension : B, the batch-size
         return_tensors="pt",
     )
 
@@ -528,6 +531,11 @@ def generate_reply(model, tokenizer, prompt, max_new_tokens=32):
     inputs = inputs.to(device)
 
     # Step 3: Generate without computing gradients
+    # We use the context manager torch.inference_mode() so that we can execute the block inside it with PyTorch's
+    # inference specific autograd tracking disabled. When execution leaves the block, the previous execution mode is restored.
+    # Why ? During Training, PyTorch tracks operations and saves information required to compute gradients. 
+    # But,during inference, we don't need those gradients and hence, we can reduce overhead and memory usage by 
+    # telling PyTorch to avoid autograd tracking and additional overhead such as view tracking and version-counter updates for inference tensors.
     with torch.inference_mode():
         outputs = model.generate(
             **inputs,
