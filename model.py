@@ -132,8 +132,44 @@ def ensure_pad_token(tokenizer):
         tokenizer.pad_token = tokenizer.eos_token 
     return tokenizer
 
-# Step 5 - get_lora_target_modules (not yet solved)
-# TODO: implement
+# Step 5 - get_lora_target_modules
+# Why do we need to get lora target modules ? 
+# BECAUSE, these 4 names : "q_proj", "k_proj", "v_proj", "o_proj" correspond to the linear 
+# projections inside each Qwen2.5 self-attention block. 
+# Under the hood, the self-attention mechanism does the following projections : 
+# Q = X @ W_q , K = X @ W_k, V = X @ W_v , and Attention(Q, K, V) = softmax((Q @ K.T/) / sqrt(d_k)) @ V . 
+# And then, we do the final O = Attention(Q, K, V) @ W_o . In Qwen2.5, these projections live as submodules 
+# named q_proj, k_proj, v_proj, o_proj inside every decoder layer. 
+# When we pass these suffixes to Unsloth, matching projection layers across transformer blocks receive LoRA adapters.
+# PEFT matches these suffixes against the model's named modules and wraps each match with a LoRA pair A [r x d], B [d x r] 
+# so that only the small A, B are trained, as shown below : 
+# Qwen2ForCausalLM
+# └── model
+#     └── layers
+#         ├── 0
+#         │   └── self_attn
+#         │       ├── q_proj  ← LoRA
+#         │       ├── k_proj  ← LoRA
+#         │       ├── v_proj  ← LoRA
+#         │       └── o_proj  ← LoRA
+#         ├── 1
+#         │   └── self_attn
+#         │       ├── q_proj  ← LoRA
+#         │       ├── k_proj  ← LoRA
+#         │       ├── v_proj  ← LoRA
+#         │       └── o_proj  ← LoRA
+#         └── ...
+
+# How does LoRA modify these layers ? 
+# Originally, a linear projection computes Y = X @ W.T . With LoRA, 
+# it is Y = X @ W.T + (alpha / r ) * (X @ (B @ A).T). Here, W is the frozen 
+# pretrained weight matrix, while A and B are small trainable matrices with rank r. 
+# For QLoRA, W can be stored in lower 4 bit precision, while the LoRA matrices are trained
+# in higher precision. 
+
+def get_lora_target_modules():
+    """Return the attention projection module name suffixes for LoRA."""
+    return ["q_proj", "k_proj", "v_proj", "o_proj"]
 
 # Step 6 - attach_lora_adapters (not yet solved)
 # TODO: implement
