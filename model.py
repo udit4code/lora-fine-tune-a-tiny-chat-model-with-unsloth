@@ -489,6 +489,28 @@ def build_chat_prompt(tokenizer, instruction):
 
     return prompt
 
+# Basic doubt : Why do we need a chat template at all ? 
+
+# Because an LLM is fundamentally a next-token prediction machine.
+# It doesn't inherently understand the concepts of a user message, assistant message, or system instruction. 
+# It receives a sequence of tokens.
+# During instruction tuning, models such as Qwen2.5-Instruct learn that specific tokens delimit conversations.
+# For example : 
+# <|im_start|>user
+# What is RAM?
+# <|im_end|>
+# <|im_start|>assistant
+# Here, These delimiters tell the model:
+# - <|im_start|>user — a user message begins.
+# - <|im_end|> — that message ends.
+# - <|im_start|>assistant — the assistant's response begins here.
+# The model learns this structure from its training data.
+# Why is this useful ? 
+# Because, "What is RAM?" is simply text, but the templated output above provides a familiar instruction-following structure that the chat-tuned model has learned.
+# A chat template is therefore not mathematically required for every causal language model, but it is strongly recommended for chat-tuned models that expect one.
+# The chat template provides conversation structure, the tokenizer provides numerical IDs, and the LLM learns and generates the response.
+#
+
 # Step 20 - generate_reply
 import torch
 
