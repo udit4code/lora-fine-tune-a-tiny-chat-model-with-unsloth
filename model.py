@@ -284,8 +284,22 @@ def build_text_dataset(texts):
     # Dataset.from_dict() converts a Python dictionary/list of columns into a Hugging Face Dataset.
     return Dataset.from_dict({"text": texts})
 
-# Step 13 - tokenize_text (not yet solved)
-# TODO: implement
+# Step 13 - tokenize_text
+# Under the hood, the tokenizer performs 2 conceptual operations : 
+# Raw Training Example (Instruction, Response) -> Tokenization (Split text for example into vocabulary tokens) -> Token IDs (A list of integers representing the vocabulary entries)
+# The actual token boundaries and IDs depend on the tokenizer.
+# Each token ID is used to retrieve an embedding vector from the model's embedding matrix, as X = Embedding(input_ids)
+
+def tokenize_text(tokenizer, text):
+    """Tokenize a single string and return a list[int] of input ids."""
+    encoded = tokenizer(
+        text,
+        # Why no padding and truncation ? So that we can measure the actual/raw sequence lengths (in terms of tokens) of our training examples.
+        padding=False,
+        truncation=False,
+    )
+
+    return encoded["input_ids"]
 
 # Step 14 - count_tokens (not yet solved)
 # TODO: implement
